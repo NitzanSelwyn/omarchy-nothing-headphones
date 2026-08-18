@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "id": "nitzan.nothing-ear-2",
+  "id": "io.github.nitzanselwyn.nothing-ear-2",
   "name": "Nothing Ear (2)",
-  "version": "0.1.0",
-  "author": "Nitzan",
+  "version": "0.2.0",
+  "author": "Nitzan Selwyn",
   "license": "MIT",
   "description": "Nothing Ear (2) battery and ANC controls in the Omarchy bar.",
   "kinds": ["bar-widget"],
   "entryPoints": {
-    "barWidget": "Panel.qml"
+    "barWidget": "BarWidget.qml"
   },
   "barWidget": {
     "displayName": "Nothing Ear (2)",

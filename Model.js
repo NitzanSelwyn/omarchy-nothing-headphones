@@ -27,13 +27,14 @@ function deviceStatus(devices) {
     return {
       found: true,
       connected: device.connected === true,
+      address: String(device.address || ""),
       name: label(device) || "Nothing Ear (2)",
       battery: device.batteryAvailable === true
         ? Math.round(Number(device.battery || 0) * 100)
         : -1
     }
   }
-  return { found: false, connected: false, name: "Nothing Ear (2)", battery: -1 }
+  return { found: false, connected: false, address: "", name: "Nothing Ear (2)", battery: -1 }
 }
 
 function parseAnc(output) {
@@ -47,6 +48,26 @@ function batteryText(level) {
   return level < 0 ? "Battery unavailable" : level + "% battery"
 }
 
+function parseBattery(output) {
+  var parsed
+  try {
+    parsed = JSON.parse(String(output || ""))
+  } catch (e) {
+    return { left: -1, right: -1, case: -1 }
+  }
+  function level(value) {
+    return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100
+      ? value : -1
+  }
+  return { left: level(parsed.left), right: level(parsed.right), case: level(parsed.case) }
+}
+
+function batterySummary(left, right, caseLevel) {
+  return "L " + (left < 0 ? "--" : left + "%")
+    + "  R " + (right < 0 ? "--" : right + "%")
+    + "  Case " + (caseLevel < 0 ? "--" : caseLevel + "%")
+}
+
 if (typeof module !== "undefined") {
-  module.exports = { MODES, isEar2, deviceStatus, parseAnc, batteryText }
+  module.exports = { MODES, isEar2, deviceStatus, parseAnc, parseBattery, batteryText, batterySummary }
 }

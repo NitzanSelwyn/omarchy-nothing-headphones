@@ -1,20 +1,18 @@
 import QtQuick
-import Quickshell.Bluetooth
-import Quickshell.Io
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
 
 Panel {
   id: root
-  moduleName: "nitzan.nothing-ear-2"
-  ipcTarget: "nothing-ear-2"
+  moduleName: "io.github.nitzanselwyn.nothing-ear-2"
   manageIpc: false
 
-  readonly property var devices: Bluetooth.devices ? Bluetooth.devices.values : []
-  readonly property var status: Model.deviceStatus(devices)
-  readonly property string ctlPath: String(setting("ctlPath", "") || "ear2ctl")
-  readonly property bool hideWhenDisconnected: setting("hideWhenDisconnected", false) === true
+  property var anchorItem: null
+  property var hostWidget: null
+  property int cursorIndex: 0
+  property bool cursorActive: false
+
   readonly property var modes: [
     { value: "off", label: "Off" },
     { value: "transparency", label: "Transparency" },
@@ -23,24 +21,22 @@ Panel {
     { value: "low", label: "Low" },
     { value: "adaptive", label: "Adaptive" }
   ]
+  readonly property var status: hostWidget ? hostWidget.status
+    : ({ found: false, connected: false, name: "Nothing Ear (2)" })
 
-  property string ancMode: ""
-  property string errorText: ""
-  property int cursorIndex: 0
-  property bool cursorActive: false
-
-  function refreshAnc() {
-    if (!status.connected || queryProcess.running || setProcess.running) return
-    errorText = ""
-    queryProcess.running = true
+  function open() {
+    root.controller.show()
+    cursorActive = false
+    cursorIndex = hostWidget ? Math.max(0, Model.MODES.indexOf(hostWidget.ancMode)) : 0
+    Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
 
-  function setAnc(mode) {
-    if (!status.connected || Model.MODES.indexOf(mode) === -1 || setProcess.running) return
-    errorText = ""
-    ancMode = mode
-    setProcess.command = [ctlPath, "anc", mode]
-    setProcess.running = true
+  function close() { root.controller.hide() }
+
+  function switchPanel(direction) {
+    if (root.bar && typeof root.bar.switchPanelFrom === "function")
+      return root.bar.switchPanelFrom(root.hostWidget || root, direction)
+    return false
   }
 
   function moveCursor(delta) {
@@ -49,41 +45,13 @@ Panel {
   }
 
   function activateCursor() {
-    setAnc(modes[cursorIndex].value)
-  }
-
-  visible: !hideWhenDisconnected || status.connected
-  implicitWidth: button.implicitWidth
-  implicitHeight: button.implicitHeight
-
-  onOpenedChanged: if (opened) {
-    cursorActive = false
-    cursorIndex = Math.max(0, Model.MODES.indexOf(ancMode))
-    refreshAnc()
-    Qt.callLater(function() { keyCatcher.forceActiveFocus() })
-  }
-
-  BarIconButton {
-    id: button
-    anchors.fill: parent
-    bar: root.bar
-    text: "󰋋"
-    active: root.status.connected
-    dimmed: !root.status.connected
-    tooltipText: root.status.connected
-      ? root.status.name + " · " + Model.batteryText(root.status.battery)
-      : "Nothing Ear (2) disconnected"
-    onPressed: function(mouseButton) {
-      if (mouseButton === Qt.RightButton && root.bar)
-        root.bar.run("omarchy-shell shell toggle omarchy.bluetooth")
-      else root.toggle()
-    }
+    if (hostWidget) hostWidget.setAnc(modes[cursorIndex].value)
   }
 
   KeyboardPanel {
     id: panel
-    anchorItem: button
-    owner: root
+    anchorItem: root.anchorItem
+    owner: root.hostWidget || root
     bar: root.bar
     open: root.opened
     focusTarget: keyCatcher
@@ -102,8 +70,9 @@ Panel {
           o: "off", t: "transparency", n: "high", m: "mid", w: "low", a: "adaptive",
           "1": "off", "2": "transparency", "3": "high", "4": "mid", "5": "low", "6": "adaptive"
         }
-        if (shortcuts[text.toLowerCase()]) root.setAnc(shortcuts[text.toLowerCase()])
-        else if (text.toLowerCase() === "r") root.refreshAnc()
+        if (!root.hostWidget) return
+        if (shortcuts[text.toLowerCase()]) root.hostWidget.setAnc(shortcuts[text.toLowerCase()])
+        else if (text.toLowerCase() === "r") root.hostWidget.refresh()
       }
 
       Column {
@@ -117,8 +86,8 @@ Panel {
 
           Text {
             text: "󰋋"
-            color: root.bar.foreground
-            font.family: root.bar.fontFamily
+            color: root.barForeground
+            font.family: root.bar ? root.bar.fontFamily : Style.font.family
             font.pixelSize: Style.font.display
           }
 
@@ -128,18 +97,17 @@ Panel {
 
             Text {
               text: root.status.name
-              color: root.bar.foreground
-              font.family: root.bar.fontFamily
+              color: root.barForeground
+              font.family: root.bar ? root.bar.fontFamily : Style.font.family
               font.pixelSize: Style.font.title
               font.bold: true
             }
 
             Text {
               text: !root.status.found ? "NOT PAIRED"
-                : root.status.connected ? Model.batteryText(root.status.battery).toUpperCase()
-                : "DISCONNECTED"
-              color: Qt.darker(root.bar.foreground, 1.4)
-              font.family: root.bar.fontFamily
+                : root.status.connected ? "CONNECTED" : "DISCONNECTED"
+              color: Qt.darker(root.barForeground, 1.4)
+              font.family: root.bar ? root.bar.fontFamily : Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
               font.letterSpacing: 1.2
@@ -147,69 +115,87 @@ Panel {
           }
         }
 
-        PanelSeparator { foreground: root.bar.foreground }
+        PanelSeparator { foreground: root.barForeground }
+
+        PanelSectionHeader {
+          text: "BATTERY"
+          foreground: root.barForeground
+          fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+        }
+
+        Row {
+          width: parent.width
+          spacing: Style.space(12)
+
+          Repeater {
+            model: [
+              { label: "LEFT", value: root.hostWidget ? root.hostWidget.leftBattery : -1 },
+              { label: "RIGHT", value: root.hostWidget ? root.hostWidget.rightBattery : -1 },
+              { label: "CASE", value: root.hostWidget ? root.hostWidget.caseBattery : -1 }
+            ]
+
+            Column {
+              required property var modelData
+              width: (parent.width - Style.space(24)) / 3
+              spacing: Style.space(2)
+
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: modelData.value < 0 ? "--" : modelData.value + "%"
+                color: root.barForeground
+                font.family: root.bar ? root.bar.fontFamily : Style.font.family
+                font.pixelSize: Style.font.heading
+                font.bold: true
+              }
+              Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: modelData.label
+                color: Qt.darker(root.barForeground, 1.4)
+                font.family: root.bar ? root.bar.fontFamily : Style.font.family
+                font.pixelSize: Style.font.caption
+                font.letterSpacing: 1.2
+              }
+            }
+          }
+        }
+
+        PanelSeparator { foreground: root.barForeground }
 
         PanelSectionHeader {
           text: "NOISE CONTROL"
-          foreground: root.bar.foreground
-          fontFamily: root.bar.fontFamily
+          foreground: root.barForeground
+          fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
         }
 
         ButtonGroup {
-          id: ancButtons
           options: root.modes
-          value: root.ancMode
+          value: root.hostWidget ? root.hostWidget.ancMode : ""
           cursorIndex: root.cursorActive ? root.cursorIndex : -1
           focusable: false
-          foreground: root.bar.foreground
-          background: root.bar.background
-          fontFamily: root.bar.fontFamily
-          enabled: root.status.connected && !setProcess.running
-          onChanged: function(value) { root.setAnc(value) }
+          foreground: root.barForeground
+          background: root.bar ? root.bar.background : Color.background
+          fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
+          enabled: root.status.connected && root.hostWidget && !root.hostWidget.busy
+          onChanged: function(value) { if (root.hostWidget) root.hostWidget.setAnc(value) }
           onHovered: function(index, hovered) {
             if (hovered) { root.cursorActive = true; root.cursorIndex = index }
           }
         }
 
         Text {
-          visible: !root.status.connected || root.errorText !== ""
-          text: root.errorText || "Connect the earbuds first. Right-click the bar icon for Bluetooth."
-          color: root.errorText ? root.bar.urgent : Qt.darker(root.bar.foreground, 1.4)
-          font.family: root.bar.fontFamily
+          visible: !root.status.connected || (root.hostWidget && root.hostWidget.errorText !== "")
+          text: root.hostWidget && root.hostWidget.errorText
+            ? root.hostWidget.errorText
+            : "Connect the earbuds first. Right-click the bar icon for Bluetooth."
+          color: root.hostWidget && root.hostWidget.errorText
+            ? (root.bar ? root.bar.urgent : Color.urgent)
+            : Qt.darker(root.barForeground, 1.4)
+          font.family: root.bar ? root.bar.fontFamily : Style.font.family
           font.pixelSize: Style.font.bodySmall
           wrapMode: Text.WordWrap
           width: parent.width
         }
       }
     }
-  }
-
-  Process {
-    id: queryProcess
-    command: [root.ctlPath, "anc"]
-    stdout: StdioCollector { id: queryOut; waitForEnd: true }
-    stderr: StdioCollector { id: queryErr; waitForEnd: true }
-    onExited: function(exitCode) {
-      var parsed = Model.parseAnc(queryOut.text)
-      if (exitCode === 0 && parsed) root.ancMode = parsed
-      else root.errorText = String(queryErr.text || "Could not read ANC mode. Is ear2ctl installed?").trim()
-    }
-  }
-
-  Process {
-    id: setProcess
-    command: []
-    stderr: StdioCollector { id: setErr; waitForEnd: true }
-    onExited: function(exitCode) {
-      if (exitCode !== 0)
-        root.errorText = String(setErr.text || "Could not change ANC mode.").trim()
-      else refreshTimer.restart()
-    }
-  }
-
-  Timer {
-    id: refreshTimer
-    interval: 500
-    onTriggered: root.refreshAnc()
   }
 }
