@@ -23,6 +23,7 @@ BarWidget {
   property int leftBattery: -1
   property int rightBattery: -1
   property int caseBattery: -1
+  property string batteryAddress: ""
   property string ancMode: ""
   property string errorText: ""
 
@@ -53,6 +54,10 @@ BarWidget {
 
   function refresh() {
     if (!status.connected || busy) return
+    if (batteryAddress !== status.address) {
+      leftBattery = rightBattery = caseBattery = -1
+      batteryAddress = status.address
+    }
     errorText = ""
     statusProcess.command = [
       "/usr/bin/python3", helperPath, status.address, "status", String(rfcommChannel)
@@ -111,9 +116,9 @@ BarWidget {
     onExited: function(exitCode) {
       if (exitCode === 0) {
         var result = Model.parseStatus(statusOut.text)
-        root.leftBattery = result.left
-        root.rightBattery = result.right
-        root.caseBattery = result.case
+        if (result.left >= 0) root.leftBattery = result.left
+        if (result.right >= 0) root.rightBattery = result.right
+        if (result.case >= 0) root.caseBattery = result.case
         root.ancMode = result.anc
       } else {
         root.errorText = String(statusErr.text || "Could not read earbud status.").trim()

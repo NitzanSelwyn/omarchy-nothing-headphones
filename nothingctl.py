@@ -63,7 +63,7 @@ def frames(sock, seconds=8):
 
 
 def parse_battery(payload):
-    levels = {"left": -1, "right": -1, "case": -1}
+    levels = {}
     names = {2: "left", 3: "right", 4: "case"}
     if not payload:
         return levels
@@ -119,6 +119,7 @@ def main():
         assert parse_battery(bytes([3, 2, 80, 3, 72, 4, 0x80 | 90])) == {
             "left": 80, "right": 72, "case": 90
         }
+        assert parse_battery(bytes([1, 2, 80])) == {"left": 80}
         assert parse_anc(bytes([1, 7, 0])) == "transparency"
         assert frame(GET_BATTERY, 1).startswith(b"\x55\x60\x01\x07\xc0")
         print("nothingctl.py: self-check passed")
