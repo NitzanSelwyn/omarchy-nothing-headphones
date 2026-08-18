@@ -132,9 +132,9 @@ Panel {
 
           Repeater {
             model: [
-              { label: "LEFT", value: root.hostWidget ? root.hostWidget.leftBattery : -1 },
-              { label: "RIGHT", value: root.hostWidget ? root.hostWidget.rightBattery : -1 },
-              { label: "CASE", value: root.hostWidget ? root.hostWidget.caseBattery : -1 }
+              { label: "LEFT", value: root.status.connected && root.hostWidget ? root.hostWidget.leftBattery : -1 },
+              { label: "RIGHT", value: root.status.connected && root.hostWidget ? root.hostWidget.rightBattery : -1 },
+              { label: "CASE", value: root.status.connected && root.hostWidget ? root.hostWidget.caseBattery : -1 }
             ]
 
             Column {
