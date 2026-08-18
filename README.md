@@ -1,31 +1,30 @@
-# Nothing Ear (2) for Omarchy
+# Nothing Earbuds for Omarchy
 
-An Omarchy Quattro bar plugin for Nothing Ear (2). It shows separate left,
-right, and case battery levels and controls all six ANC modes.
+An Omarchy Quattro bar plugin for Nothing and CMF earbuds. It shows separate
+left, right, and case battery levels and provides the controls supported by the
+detected model.
 
-Battery data is read by the bundled Python helper using the reverse-engineered
-RFCOMM protocol documented by [Something X](https://github.com/SoaOaoS/something-x).
-ANC controls use [`ear2ctl`](https://gitlab.com/bharadwaj-raju/ear2ctl).
+Nothing Ear (2) is verified. Other Nothing Ear models share the protocol but
+still need field testing; CMF Buds support is experimental. Stick/Open models
+show battery without ANC controls.
 
 ## Development install
 
-Install the small hardware-specific CLI first:
-
-```bash
-cargo install ear2ctl
-```
+The bundled helper uses Omarchy's system Python and BlueZ; there is no extra
+runtime dependency. Its protocol is based on the reverse-engineering documented
+by [Something X](https://github.com/SoaOaoS/something-x).
 
 Commit the checkout, then install and enable it through Omarchy:
 
 ```bash
 omarchy plugin validate "$PWD"
 omarchy plugin add "$PWD" --enable --yes
-omarchy bar move io.github.nitzanselwyn.nothing-ear-2 --section right
+omarchy bar move io.github.nitzanselwyn.nothing-earbuds --section right
 ```
 
 After later commits, run
-`omarchy plugin update io.github.nitzanselwyn.nothing-ear-2 --yes`.
-Left-click opens ANC controls;
+`omarchy plugin update io.github.nitzanselwyn.nothing-earbuds --yes`.
+Left-click opens device details and available controls;
 right-click opens Omarchy's Bluetooth panel. Use the arrow keys plus Enter, or
 press `1` through `6` for a mode and `r` to refresh.
 
@@ -33,10 +32,12 @@ press `1` through `6` for a mode and `r` to refresh.
 
 ```bash
 node tests/model.test.js
-/usr/bin/python3 battery.py --self-test
+/usr/bin/python3 nothingctl.py --self-test
 omarchy plugin validate .
 qmllint -I "$OMARCHY_PATH/shell" BarWidget.qml Panel.qml
 ```
 
-This is unofficial and is not endorsed by Nothing. `ear2ctl` is a separate
-GPL-3.0-or-later program; this plugin only invokes its command-line interface.
+If a model uses a different serial channel, change **RFCOMM channel** in the
+widget settings. Channel 15 is the normal default.
+
+This is unofficial and is not endorsed by Nothing.

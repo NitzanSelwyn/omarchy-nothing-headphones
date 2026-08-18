@@ -5,7 +5,7 @@ import "Model.js" as Model
 
 Panel {
   id: root
-  moduleName: "io.github.nitzanselwyn.nothing-ear-2"
+  moduleName: "io.github.nitzanselwyn.nothing-earbuds"
   manageIpc: false
 
   property var anchorItem: null
@@ -13,16 +13,9 @@ Panel {
   property int cursorIndex: 0
   property bool cursorActive: false
 
-  readonly property var modes: [
-    { value: "off", label: "Off" },
-    { value: "transparency", label: "Transparency" },
-    { value: "high", label: "High" },
-    { value: "mid", label: "Mid" },
-    { value: "low", label: "Low" },
-    { value: "adaptive", label: "Adaptive" }
-  ]
+  readonly property var modes: Model.modeOptions(status.name)
   readonly property var status: hostWidget ? hostWidget.status
-    : ({ found: false, connected: false, name: "Nothing Ear (2)" })
+    : ({ found: false, connected: false, name: "Nothing Earbuds" })
 
   function open() {
     root.controller.show()
@@ -40,12 +33,22 @@ Panel {
   }
 
   function moveCursor(delta) {
+    if (modes.length === 0) return
     cursorActive = true
     cursorIndex = Math.max(0, Math.min(modes.length - 1, cursorIndex + delta))
   }
 
   function activateCursor() {
-    if (hostWidget) hostWidget.setAnc(modes[cursorIndex].value)
+    if (hostWidget && modes.length > 0) hostWidget.setAnc(modes[cursorIndex].value)
+  }
+
+  function chooseMode(mode) {
+    for (var i = 0; i < modes.length; i++) {
+      if (modes[i].value === mode) {
+        if (hostWidget) hostWidget.setAnc(mode)
+        return
+      }
+    }
   }
 
   KeyboardPanel {
@@ -71,7 +74,7 @@ Panel {
           "1": "off", "2": "transparency", "3": "high", "4": "mid", "5": "low", "6": "adaptive"
         }
         if (!root.hostWidget) return
-        if (shortcuts[text.toLowerCase()]) root.hostWidget.setAnc(shortcuts[text.toLowerCase()])
+        if (shortcuts[text.toLowerCase()]) root.chooseMode(shortcuts[text.toLowerCase()])
         else if (text.toLowerCase() === "r") root.hostWidget.refresh()
       }
 
@@ -159,15 +162,20 @@ Panel {
           }
         }
 
-        PanelSeparator { foreground: root.barForeground }
+        PanelSeparator {
+          visible: root.modes.length > 0
+          foreground: root.barForeground
+        }
 
         PanelSectionHeader {
+          visible: root.modes.length > 0
           text: "NOISE CONTROL"
           foreground: root.barForeground
           fontFamily: root.bar ? root.bar.fontFamily : Style.font.family
         }
 
         ButtonGroup {
+          visible: root.modes.length > 0
           options: root.modes
           value: root.hostWidget ? root.hostWidget.ancMode : ""
           cursorIndex: root.cursorActive ? root.cursorIndex : -1

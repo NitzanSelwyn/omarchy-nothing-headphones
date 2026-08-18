@@ -14,52 +14,67 @@ function label(device) {
   return String(device && (device.deviceName || device.name) || "").trim()
 }
 
-function isEar2(device) {
+function isSupportedDevice(device) {
+  var name = label(device)
   return /^2c:be:eb:/i.test(String(device && device.address || ""))
-    || /nothing\s+ear\s*\(?2\)?/i.test(label(device))
+    || /^(nothing\s+)?ear(?:\s|\(|$)/i.test(name)
+    || /^cmf\b.*\b(buds?|neckband)\b/i.test(name)
 }
 
 function deviceStatus(devices) {
   var list = toArray(devices)
-  for (var i = 0; i < list.length; i++) {
-    var device = list[i]
-    if (!isEar2(device)) continue
-    return {
-      found: true,
-      connected: device.connected === true,
-      address: String(device.address || ""),
-      name: label(device) || "Nothing Ear (2)",
-      battery: device.batteryAvailable === true
-        ? Math.round(Number(device.battery || 0) * 100)
-        : -1
+  for (var connected = 1; connected >= 0; connected--) {
+    for (var i = 0; i < list.length; i++) {
+      var device = list[i]
+      if (!isSupportedDevice(device) || Number(device.connected === true) !== connected) continue
+      return {
+        found: true,
+        connected: device.connected === true,
+        address: String(device.address || ""),
+        name: label(device) || "Nothing Earbuds",
+        battery: device.batteryAvailable === true
+          ? Math.round(Number(device.battery || 0) * 100)
+          : -1
+      }
     }
   }
-  return { found: false, connected: false, address: "", name: "Nothing Ear (2)", battery: -1 }
+  return { found: false, connected: false, address: "", name: "Nothing Earbuds", battery: -1 }
 }
 
-function parseAnc(output) {
-  var match = String(output || "").trim().match(/^ANC:\s*([a-z-]+)$/i)
-  if (!match) return ""
-  var mode = match[1].toLowerCase()
-  return MODES.indexOf(mode) === -1 ? "" : mode
+function modeOptions(name) {
+  var value = String(name || "")
+  if (/ear\s*\((stick|open)\)/i.test(value)) return []
+  var common = [
+    { value: "off", label: "Off" },
+    { value: "transparency", label: "Transparency" },
+    { value: "high", label: "ANC" }
+  ]
+  if (!/ear\s*\(?2\)?/i.test(value)) return common
+  return common.concat([
+    { value: "mid", label: "Mid" },
+    { value: "low", label: "Low" },
+    { value: "adaptive", label: "Adaptive" }
+  ])
 }
 
-function batteryText(level) {
-  return level < 0 ? "Battery unavailable" : level + "% battery"
-}
-
-function parseBattery(output) {
+function parseStatus(output) {
   var parsed
   try {
     parsed = JSON.parse(String(output || ""))
   } catch (e) {
-    return { left: -1, right: -1, case: -1 }
+    return { left: -1, right: -1, case: -1, anc: "" }
   }
   function level(value) {
     return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100
       ? value : -1
   }
-  return { left: level(parsed.left), right: level(parsed.right), case: level(parsed.case) }
+  var anc = String(parsed.anc || "").toLowerCase()
+  return {
+    left: level(parsed.left),
+    right: level(parsed.right),
+    case: level(parsed.case),
+    anc: MODES.indexOf(anc) === -1 ? "" : anc
+  }
 }
 
 function batterySummary(left, right, caseLevel) {
@@ -69,5 +84,7 @@ function batterySummary(left, right, caseLevel) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { MODES, isEar2, deviceStatus, parseAnc, parseBattery, batteryText, batterySummary }
+  module.exports = {
+    MODES, isSupportedDevice, deviceStatus, modeOptions, parseStatus, batterySummary
+  }
 }

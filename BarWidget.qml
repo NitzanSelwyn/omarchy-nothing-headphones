@@ -7,15 +7,15 @@ import "Model.js" as Model
 
 BarWidget {
   id: root
-  moduleName: "io.github.nitzanselwyn.nothing-ear-2"
+  moduleName: "io.github.nitzanselwyn.nothing-earbuds"
 
   readonly property var devices: Bluetooth.devices ? Bluetooth.devices.values : []
   readonly property var status: Model.deviceStatus(devices)
-  readonly property string ctlPath: String(setting("ctlPath", "") || "ear2ctl")
-  readonly property string batteryScript: decodeURIComponent(
-    String(Qt.resolvedUrl("battery.py")).replace(/^file:\/\//, ""))
+  readonly property string helperPath: decodeURIComponent(
+    String(Qt.resolvedUrl("nothingctl.py")).replace(/^file:\/\//, ""))
+  readonly property int rfcommChannel: Number(setting("rfcommChannel", 15))
   readonly property bool hideWhenDisconnected: setting("hideWhenDisconnected", false) === true
-  readonly property bool busy: batteryProcess.running || ancProcess.running || setProcess.running
+  readonly property bool busy: statusProcess.running || setProcess.running
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
   readonly property bool popoutSwitchClosing: panelLoader.item
     ? panelLoader.item.popoutSwitchClosing === true : false
@@ -54,15 +54,19 @@ BarWidget {
   function refresh() {
     if (!status.connected || busy) return
     errorText = ""
-    batteryProcess.command = ["/usr/bin/python3", batteryScript, status.address]
-    batteryProcess.running = true
+    statusProcess.command = [
+      "/usr/bin/python3", helperPath, status.address, "status", String(rfcommChannel)
+    ]
+    statusProcess.running = true
   }
 
   function setAnc(mode) {
     if (!status.connected || Model.MODES.indexOf(mode) === -1 || busy) return
     errorText = ""
     ancMode = mode
-    setProcess.command = [ctlPath, "anc", mode]
+    setProcess.command = [
+      "/usr/bin/python3", helperPath, status.address, "anc", mode, String(rfcommChannel)
+    ]
     setProcess.running = true
   }
 
@@ -91,7 +95,7 @@ BarWidget {
     dimmed: !root.status.connected
     tooltipText: root.status.connected
       ? root.status.name + " · " + Model.batterySummary(root.leftBattery, root.rightBattery, root.caseBattery)
-      : "Nothing Ear (2) disconnected"
+      : "Nothing / CMF earbuds disconnected"
     onPressed: function(mouseButton) {
       if (mouseButton === Qt.RightButton && root.bar)
         root.bar.run("omarchy-shell shell toggle omarchy.bluetooth")
@@ -100,33 +104,20 @@ BarWidget {
   }
 
   Process {
-    id: batteryProcess
+    id: statusProcess
     command: []
-    stdout: StdioCollector { id: batteryOut; waitForEnd: true }
-    stderr: StdioCollector { id: batteryErr; waitForEnd: true }
+    stdout: StdioCollector { id: statusOut; waitForEnd: true }
+    stderr: StdioCollector { id: statusErr; waitForEnd: true }
     onExited: function(exitCode) {
       if (exitCode === 0) {
-        var levels = Model.parseBattery(batteryOut.text)
-        root.leftBattery = levels.left
-        root.rightBattery = levels.right
-        root.caseBattery = levels.case
+        var result = Model.parseStatus(statusOut.text)
+        root.leftBattery = result.left
+        root.rightBattery = result.right
+        root.caseBattery = result.case
+        root.ancMode = result.anc
       } else {
-        root.errorText = String(batteryErr.text || "Could not read battery levels.").trim()
+        root.errorText = String(statusErr.text || "Could not read earbud status.").trim()
       }
-      if (root.status.connected) ancProcess.running = true
-    }
-  }
-
-  Process {
-    id: ancProcess
-    command: [root.ctlPath, "anc"]
-    stdout: StdioCollector { id: ancOut; waitForEnd: true }
-    stderr: StdioCollector { id: ancErr; waitForEnd: true }
-    onExited: function(exitCode) {
-      var parsed = Model.parseAnc(ancOut.text)
-      if (exitCode === 0 && parsed) root.ancMode = parsed
-      else if (!root.errorText)
-        root.errorText = String(ancErr.text || "Could not read ANC mode.").trim()
     }
   }
 

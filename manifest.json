@@ -1,25 +1,25 @@
 {
   "schemaVersion": 1,
-  "id": "io.github.nitzanselwyn.nothing-ear-2",
-  "name": "Nothing Ear (2)",
-  "version": "0.2.0",
+  "id": "io.github.nitzanselwyn.nothing-earbuds",
+  "name": "Nothing Earbuds",
+  "version": "0.3.0",
   "author": "Nitzan Selwyn",
   "license": "MIT",
-  "description": "Nothing Ear (2) battery and ANC controls in the Omarchy bar.",
+  "description": "Nothing and CMF earbud battery and ANC controls in the Omarchy bar.",
   "kinds": ["bar-widget"],
   "entryPoints": {
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Nothing Ear (2)",
-    "description": "Connection, battery and ANC controls for Nothing Ear (2).",
+    "displayName": "Nothing Earbuds",
+    "description": "Connection, per-part battery and ANC controls for Nothing and CMF earbuds.",
     "category": "Audio",
-    "aliases": ["nothing", "ear2", "earbuds"],
+    "aliases": ["nothing", "cmf", "earbuds"],
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
       "hideWhenDisconnected": false,
-      "ctlPath": ""
+      "rfcommChannel": 15
     },
     "schema": [
       {
@@ -29,11 +29,13 @@
         "defaultValue": false
       },
       {
-        "key": "ctlPath",
-        "type": "path",
-        "label": "Path to ear2ctl",
-        "description": "Leave empty to find ear2ctl on PATH.",
-        "defaultValue": ""
+        "key": "rfcommChannel",
+        "type": "integer",
+        "label": "RFCOMM channel",
+        "description": "Nothing Ear devices normally use channel 15.",
+        "min": 1,
+        "max": 30,
+        "defaultValue": 15
       }
     ]
   }
