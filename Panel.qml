@@ -145,7 +145,8 @@ Panel {
               Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: modelData.value < 0 ? "--" : modelData.value + "%"
-                color: root.barForeground
+                color: modelData.value < 0
+                  ? Qt.darker(root.barForeground, 1.8) : root.barForeground
                 font.family: root.bar ? root.bar.fontFamily : Style.font.family
                 font.pixelSize: Style.font.heading
                 font.bold: true

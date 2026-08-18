@@ -26,6 +26,7 @@ assert.equal(Model.deviceStatus([
 assert.deepEqual(Model.parseStatus('{"left":80,"right":72,"case":90,"anc":"high"}'), {
   left: 80, right: 72, case: 90, anc: "high"
 })
+assert.equal(Model.parseStatus('{"left":80}').right, -1)
 assert.deepEqual(Model.parseStatus('{"left":101,"right":null,"anc":"bogus"}'), {
   left: -1, right: -1, case: -1, anc: ""
 })

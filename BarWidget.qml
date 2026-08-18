@@ -116,8 +116,8 @@ BarWidget {
     onExited: function(exitCode) {
       if (exitCode === 0) {
         var result = Model.parseStatus(statusOut.text)
-        if (result.left >= 0) root.leftBattery = result.left
-        if (result.right >= 0) root.rightBattery = result.right
+        root.leftBattery = result.left
+        root.rightBattery = result.right
         if (result.case >= 0) root.caseBattery = result.case
         root.ancMode = result.anc
       } else {
