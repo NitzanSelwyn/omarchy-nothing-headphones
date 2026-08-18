@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "nitzan.nothing-ear-2",
+  "name": "Nothing Ear (2)",
+  "version": "0.1.0",
+  "author": "Nitzan",
+  "license": "MIT",
+  "description": "Nothing Ear (2) battery and ANC controls in the Omarchy bar.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Nothing Ear (2)",
+    "description": "Connection, battery and ANC controls for Nothing Ear (2).",
+    "category": "Audio",
+    "aliases": ["nothing", "ear2", "earbuds"],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "hideWhenDisconnected": false,
+      "ctlPath": ""
+    },
+    "schema": [
+      {
+        "key": "hideWhenDisconnected",
+        "type": "boolean",
+        "label": "Hide when disconnected",
+        "defaultValue": false
+      },
+      {
+        "key": "ctlPath",
+        "type": "path",
+        "label": "Path to ear2ctl",
+        "description": "Leave empty to find ear2ctl on PATH.",
+        "defaultValue": ""
+      }
+    ]
+  }
+}
