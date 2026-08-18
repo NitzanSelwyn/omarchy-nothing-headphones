@@ -1,5 +1,7 @@
 # Nothing Earbuds for Omarchy
 
+![Nothing Headphones for Omarchy](assets/hero.png)
+
 An Omarchy Quattro bar plugin for Nothing and CMF earbuds. It shows separate
 left, right, and case battery levels and provides the controls supported by the
 detected model.
