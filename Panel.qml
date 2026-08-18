@@ -9,6 +9,7 @@ Panel {
   id: root
   moduleName: "nitzan.nothing-ear-2"
   ipcTarget: "nothing-ear-2"
+  manageIpc: false
 
   readonly property var devices: Bluetooth.devices ? Bluetooth.devices.values : []
   readonly property var status: Model.deviceStatus(devices)
